@@ -1,5 +1,5 @@
 /* 電波がなくても開けるようにする。中身を変えたら VERSION を上げる */
-const VERSION = 'keisu-v1';
+const VERSION = 'keisu-v2';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {

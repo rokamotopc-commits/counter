@@ -789,6 +789,8 @@
   }
   .rec-count small { font-size: 11px; font-weight: 500; color: var(--muted); margin-left: 1px; }
 
+  .rec-tools.csv { grid-template-columns: 1fr; }
+  .rec-tools.csv .btn { font-size: 14px; }
   .rec-tools.bk { margin-bottom: 6px; }
   .rec-tools.bk .btn { font-size: 13px; }
   .bk-note { font-size: 12px; color: var(--muted); margin: 0 0 14px; min-height: 1.4em; }
@@ -958,8 +960,12 @@
 
     <textarea class="tsv-box" id="tsvBox" rows="6" readonly hidden></textarea>
 
+    <div class="rec-tools csv">
+      <button class="btn" id="csvOut" type="button">CSVで書き出す（Excelで開ける）</button>
+    </div>
+
     <div class="rec-tools bk">
-      <button class="btn" id="bkOut" type="button">記録をファイルに書き出す</button>
+      <button class="btn" id="bkOut" type="button">バックアップを書き出す</button>
       <button class="btn" id="bkIn" type="button">読み込む</button>
     </div>
     <input id="bkFile" type="file" accept=".json,application/json" hidden>
@@ -2177,13 +2183,14 @@
     if (msg) { $('bkNote').textContent = msg; return; }
     var t = 0;
     try { t = Number(localStorage.getItem(BKEY)) || 0; } catch (e) { /* 無視 */ }
-    $('bkNote').textContent = t ? '最後に書き出した日：' + stamp(new Date(t)) : 'まだ書き出していません';
+    $('bkNote').textContent = t ? '最後のバックアップ：' + stamp(new Date(t)) : 'バックアップはまだありません';
   }
 
-  function saveFile(name, text) {
-    var blob = new Blob([text], { type: 'application/json' });
+  function saveFile(name, text, mime) {
+    mime = mime || 'application/json';
+    var blob = new Blob([text], { type: mime });
     var file = null;
-    try { file = new File([blob], name, { type: 'application/json' }); } catch (e) { file = null; }
+    try { file = new File([blob], name, { type: mime }); } catch (e) { file = null; }
     var touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
     if (touch && file && navigator.canShare && navigator.canShare({ files: [file] })) {
       return navigator.share({ files: [file] });
@@ -2197,6 +2204,28 @@
     return Promise.resolve();
   }
 
+  /* 表示中の日付分を CSV に。中身は「Excel用にコピー」と同じ列 */
+  function recordsCSV() {
+    var lines = recordsTSV().split('\n').map(function (ln) {
+      return ln.split('\t').map(function (c) {
+        return /[",\r\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c;
+      }).join(',');
+    });
+    return '\ufeff' + lines.join('\r\n') + '\r\n';   /* 先頭の印は Excel の文字化け防止 */
+  }
+
+  $('csvOut').addEventListener('click', function () {
+    var n = visibleRecords().length;
+    if (!n) { bkNote('この日付には記録がありません'); return; }
+    var name = 'keisu-' + (selDay === 'all' ? 'all-' + dayKey(new Date()) : selDay) + '.csv';
+    saveFile(name, recordsCSV(), 'text/csv').then(function () {
+      bkNote(n + '件をCSVで書き出しました');
+    }).catch(function (e) {
+      if (e && e.name === 'AbortError') { bkNote(); return; }
+      bkNote('書き出せませんでした');
+    });
+  });
+
   $('bkOut').addEventListener('click', function () {
     if (!dbc) { bkNote('保存場所が使えないため書き出せません'); return; }
     dbc.dump().then(function (bk) {
@@ -2204,7 +2233,7 @@
       bk.days.forEach(function (d) { n += d.rows.length; });
       return saveFile('keisu-backup-' + dayKey(new Date()) + '.json', JSON.stringify(bk)).then(function () {
         try { localStorage.setItem(BKEY, String(Date.now())); } catch (e) { /* 無視 */ }
-        bkNote(n + '件を書き出しました');
+        bkNote(n + '件をバックアップに書き出しました');
       });
     }).catch(function (e) {
       if (e && e.name === 'AbortError') { bkNote(); return; }
