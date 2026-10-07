@@ -1,0 +1,2259 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>重量式員数カウンター</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="員数">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+  :root {
+    color-scheme: light;
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --sunk: #f6f6f6;
+    --ink: #111111;
+    --muted: #5a5a5a;
+    --faint: #8c8c8c;
+    --line: #dcdcdc;
+    --line-strong: #b0b0b0;
+    --sel-bg: #111111;
+    --sel-ink: #ffffff;
+    --panel-bg: #111111;
+    --panel-ink: #ffffff;
+    --panel-muted: #9b9b9b;
+    --panel-line: #343434;
+
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: "Noto Sans JP", system-ui, -apple-system, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --sunk: #101010;
+      --ink: #f0f0f0;
+      --muted: #a2a2a2;
+      --faint: #767676;
+      --line: #2b2b2b;
+      --line-strong: #404040;
+      --sel-bg: #f0f0f0;
+      --sel-ink: #111111;
+      --panel-bg: #1c1c1c;
+      --panel-ink: #ffffff;
+      --panel-muted: #9b9b9b;
+      --panel-line: #383838;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0d0d0d;
+    --surface: #161616;
+    --sunk: #101010;
+    --ink: #f0f0f0;
+    --muted: #a2a2a2;
+    --faint: #767676;
+    --line: #2b2b2b;
+    --line-strong: #404040;
+    --sel-bg: #f0f0f0;
+    --sel-ink: #111111;
+    --panel-bg: #1c1c1c;
+    --panel-ink: #ffffff;
+    --panel-muted: #9b9b9b;
+    --panel-line: #383838;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 16px;
+    padding-block: 0 40px;
+  }
+
+  .topbar { padding-block: 16px 0; }
+  .topbar h1 { margin: 0; font-size: 15px; font-weight: 700; }
+  .topbar .sub {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .1em;
+    color: var(--faint);
+  }
+
+  /* ---------- tabs ---------- */
+
+  .tabs {
+    display: flex;
+    margin: 12px 0 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .tabs button {
+    flex: 1;
+    appearance: none;
+    border: 0;
+    background: var(--sunk);
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 12px 6px;
+    min-height: 48px;
+    cursor: pointer;
+  }
+  .tabs button + button { border-left: 1px solid var(--line-strong); }
+  .tabs button[aria-pressed="true"] { background: var(--sel-bg); color: var(--sel-ink); }
+  .tabs .badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    opacity: .7;
+    margin-left: 4px;
+  }
+
+  /* ---------- readout ---------- */
+
+  .readout {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 10;
+    margin: 0 -16px 18px;
+    padding: 11px 16px 13px;
+    background: var(--panel-bg);
+    color: var(--panel-ink);
+    border-bottom: 1px solid var(--panel-line);
+  }
+
+  .readout-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 500;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--panel-muted);
+  }
+
+  .chip {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    padding: 3px 9px;
+    border-radius: 2px;
+    border: 1px solid var(--panel-ink);
+    color: var(--panel-ink);
+    white-space: nowrap;
+  }
+  .chip.is-warn { background: var(--panel-ink); color: var(--panel-bg); }
+
+  .count-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    margin-top: 2px;
+  }
+  .count {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .count-value {
+    font-size: clamp(38px, 12vw, 48px);
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -.02em;
+  }
+  .count-unit { font-size: 17px; font-weight: 500; color: var(--panel-muted); }
+
+  .name-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    appearance: none;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--panel-line);
+    color: var(--panel-ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 500;
+    padding: 5px 2px;
+    margin-bottom: 4px;
+  }
+  .name-input { text-transform: uppercase; }
+  .name-input:focus { outline: none; border-bottom-color: var(--panel-ink); }
+  .name-input::placeholder { color: var(--panel-muted); font-weight: 400; }
+
+  .readout-sub {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 14px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--panel-line);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--panel-muted);
+  }
+  .readout-sub b { font-weight: 500; color: var(--panel-ink); }
+
+  .readout-note {
+    margin-top: 8px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--panel-muted);
+  }
+  .readout-note.is-alert { color: var(--panel-ink); font-weight: 500; }
+
+  /* ---------- cards ---------- */
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  .card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .card-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .step {
+    display: inline-grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--line-strong);
+    border-radius: 50%;
+    font-size: 10px;
+    letter-spacing: 0;
+    color: var(--ink);
+  }
+
+  /* ---------- scale unit ---------- */
+
+  .seg {
+    display: flex;
+    flex: 0 0 auto;
+    border: 1px solid var(--line-strong);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .seg button {
+    appearance: none;
+    border: 0;
+    background: var(--sunk);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    padding: 9px 20px;
+    min-height: 42px;
+    cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--line-strong); }
+  .seg button[aria-pressed="true"] { background: var(--sel-bg); color: var(--sel-ink); }
+
+  .prev {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 14px;
+    padding: 9px 10px 9px 12px;
+    border: 1px solid var(--ink);
+    border-radius: 2px;
+    background: var(--sunk);
+  }
+  .prev-l { font-size: 13px; color: var(--muted); min-width: 0; }
+  .prev-l b {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+  .prev-l b.m { margin-left: 8px; font-size: 15px; }
+  .prev-l span {
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-left: 6px;
+  }
+  .prev.is-diff { border-width: 2px; }
+  .prev button {
+    appearance: none;
+    flex: 0 0 auto;
+    background: var(--sel-bg);
+    border: 0;
+    border-radius: 2px;
+    color: var(--sel-ink);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 0 16px;
+    min-height: 40px;
+    cursor: pointer;
+  }
+
+  .seg.wide { width: 100%; margin-bottom: 14px; }
+  .seg.wide button { flex: 1; font-family: var(--sans); font-size: 13px; font-weight: 500; padding: 10px 6px; min-height: 44px; }
+
+  /* ---------- fields ---------- */
+
+  .field { margin-bottom: 12px; }
+  .field:last-child { margin-bottom: 0; }
+
+  .lbl {
+    display: block;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .sep {
+    margin-top: 16px;
+    padding-top: 15px;
+    border-top: 1px solid var(--line);
+  }
+
+  .select-row {
+    position: relative;
+    border: 1px solid var(--line-strong);
+    border-radius: 2px;
+    background: var(--sunk);
+  }
+  .select-row:focus-within { border-color: var(--ink); box-shadow: 0 0 0 2px var(--line); }
+  .select-row select {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    box-sizing: border-box;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.4;
+    padding: 13px 40px 13px 12px;
+    min-height: 50px;
+    cursor: pointer;
+  }
+  .select-row select:focus { outline: none; }
+  .select-row.unset select { color: var(--faint); font-weight: 400; }
+  .select-row.unset { border-style: dashed; }
+  .select-row::after {
+    content: "";
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    width: 8px;
+    height: 8px;
+    border-right: 1.5px solid var(--muted);
+    border-bottom: 1.5px solid var(--muted);
+    transform: translateY(-72%) rotate(45deg);
+    pointer-events: none;
+  }
+  .select-row.num select {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: 17px;
+  }
+
+  .input-row {
+    display: flex;
+    align-items: stretch;
+    border: 1px solid var(--line-strong);
+    border-radius: 2px;
+    background: var(--sunk);
+    overflow: hidden;
+  }
+  .input-row:focus-within { border-color: var(--ink); box-shadow: 0 0 0 2px var(--line); }
+  .input-row input {
+    flex: 1 1 auto;
+    min-width: 0;
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 21px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    padding: 12px 10px;
+  }
+  .input-row input:focus { outline: none; }
+  .input-row input::placeholder { color: var(--faint); font-weight: 400; }
+  .input-row .unit {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    min-width: 42px;
+    padding: 0 12px;
+    background: var(--surface);
+    border-left: 1px solid var(--line);
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  /* 押して g / kg を切り替える単位ボタン */
+  .input-row button.unit {
+    flex: 0 0 auto;
+    appearance: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    min-width: 54px;
+    padding: 0 10px;
+    border: 0;
+    border-left: 1px solid var(--line-strong);
+    background: var(--line);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.1;
+    cursor: pointer;
+  }
+  .input-row button.unit::after {
+    content: "\2195";
+    font-size: 11px;
+    font-weight: 400;
+    opacity: .65;
+    margin-top: 1px;
+  }
+  .input-row button.unit:hover { background: var(--line-strong); }
+
+  .derived {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 14px;
+    padding: 11px 12px;
+    background: var(--sunk);
+    border-left: 2px solid var(--ink);
+  }
+  .derived-label { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+  .derived-value {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .derived-value small { font-size: 12px; font-weight: 500; margin-left: 2px; color: var(--muted); }
+
+  /* ---------- boxes ---------- */
+
+  .boxes { display: flex; flex-direction: column; gap: 12px; }
+
+  .box {
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    background: var(--sunk);
+    padding: 11px 12px 12px;
+  }
+  .box.is-warn { border-color: var(--ink); }
+
+  .box-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .box-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    color: var(--muted);
+  }
+  .box-del {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    color: var(--faint);
+    font-size: 17px;
+    line-height: 1;
+    padding: 6px 8px;
+    margin: -6px -8px -6px 0;
+    cursor: pointer;
+  }
+  .box-del:hover { color: var(--ink); }
+
+  .box .select-row,
+  .box .input-row { background: var(--surface); }
+  .box .select-row { margin-bottom: 8px; }
+  .box .select-row select { font-size: 15px; min-height: 46px; padding-block: 11px; }
+  .box .box-other { margin-bottom: 8px; }
+  .box .box-other input { font-size: 17px; }
+
+  .box-out {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 9px;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+  }
+  .box-count { font-size: 32px; font-weight: 600; line-height: 1.15; white-space: nowrap; }
+  .box-count small { font-size: 15px; font-weight: 500; color: var(--muted); margin-left: 2px; }
+  .box-detail { font-size: 13px; color: var(--muted); text-align: right; }
+  .box.is-warn .box-detail { color: var(--ink); font-weight: 500; }
+  .box.is-warn .box-name::after { content: " 要確認"; letter-spacing: 0; }
+
+  .add {
+    appearance: none;
+    width: 100%;
+    margin-top: 12px;
+    background: transparent;
+    border: 1px dashed var(--line-strong);
+    border-radius: 2px;
+    color: var(--muted);
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 500;
+    min-height: 46px;
+    cursor: pointer;
+  }
+  .add:hover { border-color: var(--ink); color: var(--ink); }
+
+  .total-line {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--line-strong);
+  }
+  .total-line .lab { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+  .total-line .val {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .total-line .val small { font-size: 12px; font-weight: 500; color: var(--muted); margin-left: 2px; }
+
+  .bx-line {
+    margin-top: 4px;
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 19px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .bx-line:empty { display: none; }
+  .rec-bx {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    margin-top: 3px;
+  }
+  .rec-bx:empty { display: none; }
+
+  /* ---------- actions ---------- */
+
+  .editbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--ink);
+    border-radius: 2px;
+    background: var(--sunk);
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .editbar span { min-width: 0; overflow-wrap: anywhere; }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .btn {
+    appearance: none;
+    border-radius: 2px;
+    min-height: 54px;
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    color: var(--muted);
+  }
+  .btn.primary { background: var(--sel-bg); border-color: var(--sel-bg); color: var(--sel-ink); }
+  .btn:disabled { opacity: .35; cursor: default; }
+  .btn:not(:disabled):hover { border-color: var(--ink); color: var(--ink); }
+  .btn.primary:not(:disabled):hover { color: var(--sel-ink); }
+
+  /* ---------- pending summary ---------- */
+
+  .summary {
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    background: var(--surface);
+    padding: 4px 16px;
+    margin-bottom: 14px;
+  }
+  .summary div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
+  .summary div:last-child { border-bottom: 0; }
+  .summary .k { color: var(--muted); flex: 0 0 auto; }
+  .summary .v {
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    text-align: right;
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .summary .v.name { font-family: var(--sans); }
+  .summary .v.none { color: var(--faint); font-weight: 400; }
+
+  /* ---------- records ---------- */
+
+  .warnbar {
+    margin-bottom: 14px;
+    padding: 11px 12px;
+    border: 1px solid var(--ink);
+    border-radius: 2px;
+    background: var(--sunk);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
+  }
+
+  .rec-tools {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .rec-tools .btn { min-height: 50px; font-size: 14px; }
+
+  .tsv-box {
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 14px;
+    padding: 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 2px;
+    background: var(--sunk);
+    color: var(--ink);
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.5;
+    white-space: pre;
+    overflow-x: auto;
+    resize: vertical;
+  }
+
+  .rec-today {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    font-weight: 500;
+  }
+
+  .rec { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+  .rec:last-child { border-bottom: 0; }
+
+  .rec-body {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 11px 0;
+    background: var(--surface);
+    transform: translateX(0);
+    transition: transform .18s ease;
+    touch-action: pan-y;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .rec.is-dragging .rec-body { transition: none; }
+
+  .rec-actions {
+    position: absolute;
+    z-index: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+  }
+  .rec-btn {
+    width: 74px;
+    appearance: none;
+    border: 0;
+    font-family: var(--sans);
+    font-size: 13.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .rec-btn.edit { background: var(--line); color: var(--ink); }
+  .rec-btn.del { background: var(--sel-bg); color: var(--sel-ink); }
+
+  .rec-l { min-width: 0; flex: 1 1 auto; }
+  .rec-name { font-size: 14px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+  .rec-name.is-blank { color: var(--faint); font-weight: 400; }
+  .rec-meta {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .rec-count {
+    flex: 0 0 auto;
+    font-family: var(--mono);
+    font-size: 17px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .rec-count small { font-size: 11px; font-weight: 500; color: var(--muted); margin-left: 1px; }
+
+  .rec-tools.bk { margin-bottom: 6px; }
+  .rec-tools.bk .btn { font-size: 13px; }
+  .bk-note { font-size: 12px; color: var(--muted); margin: 0 0 14px; min-height: 1.4em; }
+
+  .empty { font-size: 13px; color: var(--faint); padding: 2px 0; }
+
+  :focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <div class="topbar">
+    <h1>重量式員数カウンター</h1>
+    <div class="sub">単体版</div>
+  </div>
+
+  <div class="tabs" role="group" aria-label="画面切り替え">
+    <button type="button" id="tabCalc" aria-pressed="true">計算</button>
+    <button type="button" id="tabRec" aria-pressed="false">保存一覧<span class="badge" id="tabBadge"></span></button>
+  </div>
+
+  <div id="viewCalc">
+
+    <div class="readout">
+      <div class="readout-top">
+        <span class="eyebrow">合計員数（1の位 四捨五入）</span>
+        <span class="chip" id="chip" hidden></span>
+      </div>
+      <div class="count-row">
+        <div class="count">
+          <span class="count-value" id="countValue">—</span>
+          <span class="count-unit">個</span>
+        </div>
+        <input class="name-input" id="prodName" type="text" placeholder="製品名" autocomplete="off">
+      </div>
+      <div class="readout-sub">
+        <span>箱数 <b id="boxCount">—</b></span>
+        <span>実数値 <b id="rawValue">—</b></span>
+        <span>単重量 <b id="unitEcho">—</b></span>
+        <span>取数 <b id="multEcho">×1</b></span>
+      </div>
+      <div class="readout-note" id="note">単重量を入力</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title"><span class="step">1</span>単重量</span>
+      </div>
+
+      <div class="prev" id="prevBar" hidden>
+        <span class="prev-l">前回 <b id="prevVal">—</b><b class="m" id="prevMult"></b><span id="prevWhen"></span></span>
+        <button type="button" id="prevUse">使う</button>
+      </div>
+
+      <div class="seg wide" role="group" aria-label="単重量の決め方">
+        <button type="button" id="modeMeasure" aria-pressed="true">実測から算出</button>
+        <button type="button" id="modeDirect" aria-pressed="false">直接入力</button>
+      </div>
+
+      <div id="paneMeasure">
+        <div class="field">
+          <label class="lbl" for="sampleN">測った個数</label>
+          <div class="select-row num">
+            <select id="sampleN">
+              <option value="1">1 個</option>
+              <option value="2">2 個</option>
+              <option value="3">3 個</option>
+              <option value="4">4 個</option>
+              <option value="5">5 個</option>
+              <option value="6">6 個</option>
+              <option value="7">7 個</option>
+              <option value="8">8 個</option>
+              <option value="9">9 個</option>
+              <option value="10" selected>10 個</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="lbl" for="sampleW">重量</label>
+          <div class="input-row">
+            <input id="sampleW" type="text" inputmode="decimal" placeholder="0" autocomplete="off">
+            <span class="unit">g</span>
+          </div>
+        </div>
+
+        <div class="derived">
+          <span class="derived-label">算出された単重量</span>
+          <span class="derived-value" id="unitOut">—</span>
+        </div>
+      </div>
+
+      <div id="paneDirect" hidden>
+        <div class="field">
+          <label class="lbl" for="unitDirect">単重量</label>
+          <div class="input-row">
+            <input id="unitDirect" type="text" inputmode="decimal" placeholder="0" autocomplete="off">
+            <span class="unit">g</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="field sep">
+        <label class="lbl" for="multSel">取数</label>
+        <div class="select-row num">
+          <select id="multSel">
+            <option value="1" selected>&times;1</option>
+            <option value="2">&times;2</option>
+            <option value="3">&times;3</option>
+            <option value="4">&times;4</option>
+            <option value="8">&times;8</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title"><span class="step">2</span>検品</span>
+      </div>
+
+      <div class="boxes" id="boxes"></div>
+      <button class="add" id="addBox" type="button">＋ 箱を追加</button>
+
+      <div class="total-line">
+        <span class="lab">合計</span>
+        <span class="val" id="totalOut">—</span>
+      </div>
+      <div class="bx-line" id="bxOut"></div>
+    </div>
+
+    <div class="editbar" id="editBar" hidden>
+      <span id="editLabel">訂正中</span>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" id="next" type="button" disabled>次へ</button>
+      <button class="btn" id="cancel" type="button">取消</button>
+    </div>
+
+    <div class="summary">
+      <div><span class="k">製品名</span><span class="v name none" id="sumName">—</span></div>
+      <div><span class="k">単重量</span><span class="v none" id="sumUnit">—</span></div>
+      <div><span class="k">箱数</span><span class="v none" id="sumBoxes">—</span></div>
+    </div>
+
+  </div><!-- /viewCalc -->
+
+  <div id="viewRec" hidden>
+
+    <div class="warnbar" id="storeWarn" hidden>記録を保存できません。プライベートブラウズを解除するか、ブラウザの保存設定を確認してください。</div>
+
+    <div class="field" style="margin-bottom:14px">
+      <div class="select-row">
+        <select id="daySel" aria-label="日付"></select>
+      </div>
+    </div>
+
+    <div class="rec-tools">
+      <button class="btn primary" id="copy" type="button">Excel用にコピー</button>
+      <button class="btn" id="wipe" type="button">全消去</button>
+    </div>
+
+    <textarea class="tsv-box" id="tsvBox" rows="6" readonly hidden></textarea>
+
+    <div class="rec-tools bk">
+      <button class="btn" id="bkOut" type="button">記録をファイルに書き出す</button>
+      <button class="btn" id="bkIn" type="button">読み込む</button>
+    </div>
+    <input id="bkFile" type="file" accept=".json,application/json" hidden>
+    <div class="bk-note" id="bkNote"></div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">保存一覧</span>
+        <span class="rec-today" id="recToday"></span>
+      </div>
+      <div id="recList"></div>
+    </div>
+
+  </div><!-- /viewRec -->
+
+</div>
+
+<script>
+  var $ = function (id) { return document.getElementById(id); };
+
+  var KEY = 'keisu2-prefs-v2';     /* 端末の好み（箱数・はかりの単位）だけ */
+  var RKEY = 'keisu2-records-v1';
+  var TOL = 2;
+  var MAX_BOXES = 20;
+  var MAX_RECORDS = 5000;
+  var MAX_BOX_G = 60000;           /* 1箱の上限目安。単位の取り違え検出用 */
+
+  var TARES = [
+    { v: 't1', name: 'No2　がさ入れ', g: 550, grp: 'No2' },
+    { v: 't2', name: 'No2　ケーシング', g: 800, grp: 'No2' },
+    { v: 't3', name: 'No4　がさ入れ', g: 750, grp: 'No4' },
+    { v: 't4', name: 'No4　ケーシング', g: 1000, grp: 'No4' },
+    { v: 't5', name: '大大袋＋ロット', g: 11.7, grp: '大大袋' },
+    { v: 't6', name: 'No2　台紙＋ミラー', g: 69, grp: '台紙＋ミラー' }
+  ];
+
+  var mode = 'measure';
+  var prefSampleUnit = 'g';   /* サンプル重量欄の初期単位 */
+  var prefBoxUnit = 'kg';     /* 箱の重量欄の初期単位。開いたときは必ず kg */
+  var result = null;
+  var recId = null;        /* この計算に対応する記録 */
+  var recFromList = false; /* 一覧の編集から開いたか */
+
+  /* 全角数字・カンマ・空白を吸収。数字以外が混ざっていたら数値として扱わない */
+  function num(str) {
+    if (str == null) return NaN;
+    var s = String(str)
+      .replace(/[０-９]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); })
+      .replace(/[．。]/g, '.')
+      .replace(/[－−ー]/g, '-')
+      .replace(/[,，、\s　]/g, '');
+    if (s === '') return NaN;
+    if (!/^-?(\d+\.?\d*|\.\d+)$/.test(s)) return NaN;
+    var n = parseFloat(s);
+    return isFinite(n) ? n : NaN;
+  }
+
+  function fmt(n, d) {
+    if (!isFinite(n)) return '—';
+    return n.toLocaleString('ja-JP', { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+  function gfmt(g) { return fmt(g, g % 1 ? 1 : 0) + 'g'; }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function dayKey(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function stamp(d) { return pad(d.getMonth() + 1) + '/' + pad(d.getDate()); }
+
+  /* 単位ボタンは入力欄ごとに独立。ボタン自身が単位を持つ */
+  function setUnitBtn(btn, u) {
+    if (!btn) return;
+    u = u === 'kg' ? 'kg' : 'g';
+    btn.dataset.u = u;
+    btn.textContent = u;
+  }
+
+  function unitBtnOf(input) {
+    var row = input.closest('.input-row');
+    return row ? row.querySelector('.sc-unit') : null;
+  }
+
+  function unitOf(input) {
+    var btn = unitBtnOf(input);
+    return btn && btn.dataset.u === 'kg' ? 'kg' : 'g';
+  }
+
+  /* その欄の単位でグラムに直す */
+  function gramsOf(input) {
+    var v = num(input.value);
+    if (!isFinite(v)) return NaN;
+    return unitOf(input) === 'kg' ? v * 1000 : v;
+  }
+
+  /* 製品名の照合キー。大文字小文字と前後の空白だけ無視する完全一致 */
+  function normName(s) {
+    return String(s == null ? '' : s).trim().toLowerCase();
+  }
+
+  /* 製品名は大文字で保存する */
+  function prodNameValue() {
+    return $('prodName').value.trim().toUpperCase();
+  }
+
+  var units = {};   /* 照合キー -> {n:製品名, u:単重量, t:測った日時} */
+
+  function sampleN() { return parseInt($('sampleN').value, 10) || 1; }
+  function mult() { return parseInt($('multSel').value, 10) || 1; }
+
+  function setMode(m) {
+    mode = m;
+    $('modeMeasure').setAttribute('aria-pressed', m === 'measure' ? 'true' : 'false');
+    $('modeDirect').setAttribute('aria-pressed', m === 'direct' ? 'true' : 'false');
+    $('paneMeasure').hidden = m !== 'measure';
+    $('paneDirect').hidden = m !== 'direct';
+  }
+
+  /* ---------- 箱 ---------- */
+
+  function tareOptionsHTML() {
+    var h = '<option value="">梱包を選択</option>';
+    for (var i = 0; i < TARES.length; i++) {
+      h += '<option value="' + TARES[i].v + '">' + TARES[i].name + '　' + gfmt(TARES[i].g) + '</option>';
+    }
+    return h + '<option value="other">その他</option>';
+  }
+
+  function tareG(box) {
+    var v = box.querySelector('.box-tare').value;
+    if (v === '') return NaN;
+    if (v === 'other') return gramsOf(box.querySelector('.box-other-input'));
+    for (var i = 0; i < TARES.length; i++) if (TARES[i].v === v) return TARES[i].g;
+    return NaN;
+  }
+
+  function tareName(box) {
+    var v = box.querySelector('.box-tare').value;
+    if (v === '') return '';
+    if (v === 'other') return 'その他';
+    for (var i = 0; i < TARES.length; i++) if (TARES[i].v === v) return TARES[i].name.replace(/　/g, ' ');
+    return '';
+  }
+
+  /* がさ入れ・ケーシングを分けない呼び名（No2 / No4 など） */
+  function tareGrpOf(v) {
+    if (v === 'other') return 'その他';
+    for (var i = 0; i < TARES.length; i++) if (TARES[i].v === v) return TARES[i].grp;
+    return '';
+  }
+
+  /* [["No4",3],["No2",1]] -> "No4 3箱　No2 1箱" */
+  function bxText(bx) {
+    if (!bx || !bx.length) return '';
+    return bx.map(function (b) { return b[0] + ' ' + b[1] + '箱'; }).join('　');
+  }
+
+  function bxAdd(bx, g) {
+    for (var i = 0; i < bx.length; i++) if (bx[i][0] === g) { bx[i][1]++; return; }
+    bx.push([g, 1]);
+  }
+
+  /* 記録の箱数内訳。古い記録は入力値から数え直す */
+  function recBx(r) {
+    if (r.bx && r.bx.length) return bxText(r.bx);
+    var n = r.boxes || 0;
+    var arr = r.inputs && r.inputs.boxes;
+    if (arr && arr.length && typeof arr[0] === 'object') {
+      var bx = [], c = 0;
+      for (var i = 0; i < arr.length; i++) {
+        var g = tareGrpOf(arr[i].tare || '');
+        if (!g || !isFinite(num(arr[i].w))) continue;
+        bxAdd(bx, g); c++;
+      }
+      if (c && c === n) return bxText(bx);
+    }
+    for (var k = 0; k < TARES.length; k++) {
+      if (TARES[k].name.replace(/　/g, ' ') === r.tareName) return TARES[k].grp + ' ' + n + '箱';
+    }
+    return n ? n + '箱' : '';
+  }
+
+  function renumber() {
+    var bs = $('boxes').querySelectorAll('.box');
+    for (var i = 0; i < bs.length; i++) {
+      bs[i].querySelector('.box-name').textContent = '箱' + (i + 1);
+      var del = bs[i].querySelector('.box-del');
+      del.setAttribute('aria-label', '箱' + (i + 1) + 'を削除');
+      del.hidden = bs.length <= 1;
+    }
+    $('addBox').hidden = bs.length >= MAX_BOXES;
+  }
+
+  function syncBox(box) {
+    var v = box.querySelector('.box-tare').value;
+    box.querySelector('.box-other').hidden = v !== 'other';
+    box.querySelector('.select-row').classList.toggle('unset', v === '');
+  }
+
+  function addBox(focus) {
+    if ($('boxes').querySelectorAll('.box').length >= MAX_BOXES) return;
+    var el = document.createElement('div');
+    el.className = 'box';
+    el.innerHTML =
+      '<div class="box-head">' +
+        '<span class="box-name"></span>' +
+        '<button class="box-del" type="button">&times;</button>' +
+      '</div>' +
+      '<div class="select-row unset">' +
+        '<select class="box-tare" aria-label="梱包">' + tareOptionsHTML() + '</select>' +
+      '</div>' +
+      '<div class="input-row box-other" hidden>' +
+        '<input class="box-other-input" type="text" inputmode="decimal" placeholder="0" autocomplete="off" aria-label="その他の梱包">' +
+        '<button class="unit sc-unit" type="button" data-u="g" aria-label="単位を切り替え">g</button>' +
+      '</div>' +
+      '<div class="input-row">' +
+        '<input class="box-input" type="text" inputmode="decimal" placeholder="0" autocomplete="off" aria-label="箱の総重量">' +
+        '<button class="unit sc-unit box-unit" type="button" data-u="' + prefBoxUnit + '" aria-label="単位を切り替え">' + prefBoxUnit + '</button>' +
+      '</div>' +
+      '<div class="box-out">' +
+        '<span class="box-count">—</span>' +
+        '<span class="box-detail"></span>' +
+      '</div>';
+    var prev = $('boxes').lastElementChild;
+    $('boxes').appendChild(el);
+    if (prev) {
+      copyTare(prev, el);
+      setUnitBtn(el.querySelector('.box-unit'), unitOf(prev.querySelector('.box-input')));
+    }
+    renumber();
+    if (focus) {
+      el.querySelector(el.querySelector('.box-tare').value ? '.box-input' : '.box-tare').focus();
+    }
+  }
+
+  function setBoxes(n) {
+    $('boxes').innerHTML = '';
+    for (var i = 0; i < Math.max(1, Math.min(n, MAX_BOXES)); i++) addBox(false);
+  }
+
+  function copyTare(from, to) {
+    var v = from.querySelector('.box-tare').value;
+    to.querySelector('.box-tare').value = v;
+    var fo = from.querySelector('.box-other-input');
+    var to2 = to.querySelector('.box-other-input');
+    to2.value = v === 'other' ? fo.value : '';
+    if (v === 'other') setUnitBtn(unitBtnOf(to2), unitOf(fo));
+    syncBox(to);
+  }
+
+  /* 梱包を選んだら、その箱より下の箱を全部同じ梱包にする */
+  function spreadTare(from) {
+    var bs = $('boxes').querySelectorAll('.box');
+    var hit = false;
+    for (var i = 0; i < bs.length; i++) {
+      if (bs[i] === from) { hit = true; continue; }
+      if (hit) copyTare(from, bs[i]);
+    }
+  }
+
+  /* 「その他」の重さを打ったら、続けて「その他」になっている下の箱にも入れる */
+  function spreadOther(from) {
+    var bs = $('boxes').querySelectorAll('.box');
+    var hit = false;
+    for (var i = 0; i < bs.length; i++) {
+      if (bs[i] === from) { hit = true; continue; }
+      if (!hit) continue;
+      if (bs[i].querySelector('.box-tare').value !== 'other') break;
+      copyTare(from, bs[i]);
+    }
+  }
+
+  /* ---------- 記録 ----------
+     真実はメモリ上の records。保存先は db（消えない）とローカル（控え）の2つ。
+     db は後から使えるようになるので、来たら読み直して差し替える。          */
+
+  var records = [];
+  var dbc = null;          /* db が使える場合のみ入る */
+  var dbReady = false;
+  var DAYS_BACK = 120;     /* 一覧に読み込む日数 */
+
+  function getRecords() { return records; }
+
+  function dayOf(t) { return dayKey(new Date(t)); }
+
+  function localSave(a) {
+    try { localStorage.setItem(RKEY, JSON.stringify(a)); return true; }
+    catch (e) { return false; }
+  }
+
+  function localLoad() {
+    try {
+      var a = JSON.parse(localStorage.getItem(RKEY));
+      return Array.isArray(a) ? a : [];
+    } catch (e) { return []; }
+  }
+
+  /* 梱包ごとではなく日ごとに1件の書類にまとめる（件数の上限対策） */
+  function dbSaveDays(days) {
+    if (!dbc) return;
+    Object.keys(days).forEach(function (d) {
+      var rows = records.filter(function (r) { return dayOf(r.t) === d; });
+      var ref = dbc.doc('days/' + d);
+      var p = rows.length ? ref.set({ day: d, rows: rows }) : ref.delete();
+      p.catch(function () { $('storeWarn').hidden = false; });
+    });
+  }
+
+  function dbSaveUnit(name, unit, mlt, t) {
+    if (!dbc || !name) return;
+    var key = normName(name);
+    if (!key) return;
+    dbc.doc('index/units').get().then(function (snap) {
+      var m = (snap.exists && snap.data() && snap.data().map) || {};
+      m[key] = { n: name, u: unit, m: mlt, t: t };
+      units = m;
+      return dbc.doc('index/units').set({ map: m });
+    }).catch(function () { /* 索引は失われても計算には影響しない */ });
+  }
+
+  /* days は書き換わった日付の集合 */
+  function putRecords(a, days) {
+    records = a;
+    var ok = localSave(a);
+    if (dbc) {
+      dbSaveDays(days || allDays(a));
+      ok = true;
+    }
+    $('storeWarn').hidden = ok;
+    return ok;
+  }
+
+  function allDays(a) {
+    var s = {};
+    for (var i = 0; i < a.length; i++) s[dayOf(a[i].t)] = 1;
+    return s;
+  }
+
+  /* この端末の中の保存場所（IndexedDB）。書類の持ち方は 2号と同じ:
+       days/YYYY-MM-DD -> {day, rows}   index/units -> {map}            */
+  var LocalDb = (function () {
+    var opening = null;
+    function open() {
+      if (opening) return opening;
+      opening = new Promise(function (res, rej) {
+        var rq = indexedDB.open('keisu', 1);
+        rq.onupgradeneeded = function () { rq.result.createObjectStore('docs'); };
+        rq.onsuccess = function () { res(rq.result); };
+        rq.onerror = function () { rej(rq.error); };
+      });
+      return opening;
+    }
+    function tx(mode, fn) {
+      return open().then(function (db) {
+        return new Promise(function (res, rej) {
+          var t = db.transaction('docs', mode);
+          var out = fn(t.objectStore('docs'));
+          t.oncomplete = function () { res(out); };
+          t.onerror = t.onabort = function () { rej(t.error); };
+        });
+      });
+    }
+    function snap(v) { return { exists: v !== undefined, data: function () { return v; } }; }
+    function range(name) { return IDBKeyRange.bound(name + '/', name + '/\uffff'); }
+    var api = {
+      ready: function () {
+        if (!window.indexedDB) return Promise.resolve(null);
+        return open().then(function () { return api; }, function () { return null; });
+      },
+      doc: function (path) {
+        return {
+          get: function () { return tx('readonly', function (s) { return s.get(path); }).then(function (r) { return snap(r.result); }); },
+          set: function (v) { return tx('readwrite', function (s) { s.put(v, path); }); },
+          delete: function () { return tx('readwrite', function (s) { s.delete(path); }); }
+        };
+      },
+      collection: function (name) {
+        var lim = Infinity, desc = false;
+        var q = {
+          orderBy: function (f, d) { desc = d === 'desc'; return q; },
+          limit: function (n) { lim = n; return q; },
+          get: function () {
+            return tx('readonly', function (s) { return s.getAll(range(name)); }).then(function (r) {
+              var a = r.result.slice().sort(function (x, y) { return x.day < y.day ? -1 : 1; });
+              if (desc) a.reverse();
+              return { docs: a.slice(0, lim).map(function (v) { return { data: function () { return v; } }; }) };
+            });
+          }
+        };
+        return q;
+      },
+      /* 全部を1つのオブジェクトに（書き出し用） */
+      dump: function () {
+        return Promise.all([api.collection('days').get(), api.doc('index/units').get()]).then(function (r) {
+          return {
+            app: 'keisu', v: 1, exported: Date.now(),
+            days: r[0].docs.map(function (d) { return d.data(); }),
+            units: (r[1].exists && r[1].data().map) || {}
+          };
+        });
+      },
+      /* 読み込み。今ある記録は消さず、無いものだけ足す */
+      merge: function (bk) {
+        var days = Array.isArray(bk.days) ? bk.days : [];
+        var added = 0;
+        var jobs = days.map(function (d) {
+          if (!d || !/^\d{4}-\d{2}-\d{2}$/.test(d.day) || !Array.isArray(d.rows)) return null;
+          return api.doc('days/' + d.day).get().then(function (s) {
+            var rows = (s.exists && s.data().rows) || [];
+            var seen = {};
+            rows.forEach(function (r) { seen[r.t] = 1; });
+            d.rows.forEach(function (r) {
+              if (r && typeof r.t === 'number' && typeof r.count === 'number' && !seen[r.t]) { rows.push(r); seen[r.t] = 1; added++; }
+            });
+            rows.sort(function (x, y) { return y.t - x.t; });
+            return api.doc('days/' + d.day).set({ day: d.day, rows: rows });
+          });
+        });
+        jobs.push(api.doc('index/units').get().then(function (s) {
+          var m = (s.exists && s.data().map) || {};
+          var inc = bk.units && typeof bk.units === 'object' ? bk.units : {};
+          Object.keys(inc).forEach(function (k) {
+            var a = inc[k];
+            if (!a || !(a.u > 0)) return;
+            if (!m[k] || (a.t || 0) > (m[k].t || 0)) m[k] = a;
+          });
+          return api.doc('index/units').set({ map: m });
+        }));
+        return Promise.all(jobs).then(function () { return added; });
+      }
+    };
+    return api;
+  })();
+
+  /* db が使えるようになったら、そちらを正として読み直す */
+  function reloadFromDb() {
+    return LocalDb.ready().then(function (d) {
+      if (!d) return;
+      dbc = d;
+      return d.collection('days').orderBy('day', 'desc').limit(DAYS_BACK).get()
+        .then(function (snap) {
+          var fromDb = [];
+          snap.docs.forEach(function (doc) {
+            var v = doc.data();
+            if (v && Array.isArray(v.rows)) fromDb = fromDb.concat(v.rows);
+          });
+          /* ローカルにしかない記録は db に上げて取りこぼさない */
+          var seen = {};
+          fromDb.forEach(function (r) { seen[r.t] = 1; });
+          var onlyLocal = records.filter(function (r) { return !seen[r.t]; });
+          records = fromDb.concat(onlyLocal).sort(function (x, y) { return y.t - x.t; });
+          dbReady = true;
+          localSave(records);
+          if (onlyLocal.length) dbSaveDays(allDays(onlyLocal));
+          $('storeWarn').hidden = true;
+          return d.doc('index/units').get().then(function (s2) {
+            if (s2.exists && s2.data() && s2.data().map) units = s2.data().map;
+            renderRecords();
+            showPrev();
+          });
+        });
+    }).catch(function () { /* db が無くてもローカルで動く */ });
+  }
+  function initDb() { reloadFromDb(); }
+
+  var SWIPE_W = 148;
+  var openRow = null;
+  var drag = null;
+  var skipClick = false;
+
+  function closeRow() {
+    if (!openRow) return;
+    openRow.querySelector('.rec-body').style.transform = 'translateX(0)';
+    openRow.classList.remove('is-open');
+    openRow = null;
+  }
+  function openRowAt(row) {
+    if (openRow && openRow !== row) closeRow();
+    row.querySelector('.rec-body').style.transform = 'translateX(-' + SWIPE_W + 'px)';
+    row.classList.add('is-open');
+    openRow = row;
+  }
+
+  /* 選択中の日付。'all' ですべて。既定は今日 */
+  var selDay = dayKey(new Date());
+
+  function dayLabel(k) {
+    var p = k.split('-');
+    return p[1] + '/' + p[2];
+  }
+
+  /* 日付の選択肢を作り直す。今日は記録が無くても必ず出す */
+  function buildDays() {
+    var all = getRecords();
+    var cnt = {};
+    for (var i = 0; i < all.length; i++) {
+      var k = dayOf(all[i].t);
+      cnt[k] = (cnt[k] || 0) + 1;
+    }
+    var today = dayKey(new Date());
+    if (!cnt[today]) cnt[today] = 0;
+
+    var keys = Object.keys(cnt).sort().reverse();
+    if (selDay !== 'all' && keys.indexOf(selDay) < 0) selDay = today;
+
+    var sel = $('daySel');
+    sel.innerHTML = keys.map(function (k) {
+      return '<option value="' + k + '">' + dayLabel(k) + '（' + cnt[k] + '件）' +
+             (k === today ? '　今日' : '') + '</option>';
+    }).join('') + '<option value="all">すべて（' + all.length + '件）</option>';
+    sel.value = selDay;
+  }
+
+  function visibleRecords() {
+    var all = getRecords();
+    if (selDay === 'all') return all;
+    return all.filter(function (r) { return dayOf(r.t) === selDay; });
+  }
+
+  function renderRecords() {
+    buildDays();
+    var all = getRecords();
+    var recs = visibleRecords();
+    var list = $('recList');
+    openRow = null;
+    drag = null;
+    list.innerHTML = '';
+
+    $('tabBadge').textContent = all.length ? all.length : '';
+    $('copy').disabled = !recs.length;
+    $('wipe').disabled = !recs.length;
+    $('wipe').textContent = selDay === 'all' ? '全消去' : 'この日を消去';
+
+    var sum = 0;
+    for (var i = 0; i < recs.length; i++) sum += recs[i].count;
+    $('recToday').textContent = recs.length
+      ? recs.length + '件 / ' + sum.toLocaleString('ja-JP') + '個' : '';
+
+    if (!recs.length) {
+      var e = document.createElement('div');
+      e.className = 'empty';
+      e.textContent = '記録なし';
+      list.appendChild(e);
+      return;
+    }
+
+    for (var j = 0; j < recs.length; j++) {
+      var r = recs[j];
+      var d = new Date(r.t);
+      var row = document.createElement('div');
+      row.className = 'rec';
+      row.innerHTML =
+        '<div class="rec-actions">' +
+          '<button class="rec-btn edit" type="button" data-act="edit" data-t="' + r.t + '">編集</button>' +
+          '<button class="rec-btn del" type="button" data-act="del" data-t="' + r.t + '">削除</button>' +
+        '</div>' +
+        '<div class="rec-body">' +
+          '<div class="rec-l">' +
+            '<div class="rec-name' + (r.name ? '' : ' is-blank') + '"></div>' +
+            '<div class="rec-meta">' + stamp(d) + '　単重量 ' + fmt(r.unit, 3) + 'g　取数 ×' + (r.mult || 1) + '</div>' +
+            '<div class="rec-bx"></div>' +
+          '</div>' +
+          '<span class="rec-count">' + r.count.toLocaleString('ja-JP') + '<small>個</small></span>' +
+        '</div>';
+      row.querySelector('.rec-name').textContent = r.name || '（製品名なし）';
+      row.querySelector('.rec-bx').textContent = recBx(r);
+      list.appendChild(row);
+    }
+  }
+
+  /* ---------- 画面切り替え ---------- */
+
+  function setTab(t) {
+    if (t === 'rec' && result) commit(false);
+    $('tabCalc').setAttribute('aria-pressed', t === 'calc' ? 'true' : 'false');
+    $('tabRec').setAttribute('aria-pressed', t === 'rec' ? 'true' : 'false');
+    $('viewCalc').hidden = t !== 'calc';
+    $('viewRec').hidden = t !== 'rec';
+    if (t === 'rec') renderRecords();
+    $('tsvBox').hidden = true;
+    window.scrollTo(0, 0);
+  }
+
+  $('tabCalc').addEventListener('click', function () { setTab('calc'); });
+  $('tabRec').addEventListener('click', function () { setTab('rec'); });
+
+  /* ---------- コピー・全消去 ---------- */
+
+  function flash(btn, msg, finalLabel) {
+    if (btn.dataset.busy) return;
+    var back = finalLabel != null ? finalLabel : btn.textContent;
+    btn.dataset.busy = '1';
+    btn.textContent = msg;
+    setTimeout(function () {
+      btn.textContent = back;
+      delete btn.dataset.busy;
+    }, 1600);
+  }
+
+  function recordsTSV() {
+    var recs = visibleRecords().slice().sort(function (a, b) { return a.t - b.t; });
+    var rows = [['日付', '時刻', '製品名', '員数', '単重量', '取数', '梱包', '梱包g', '箱数', '箱数内訳'].join('\t')];
+    for (var i = 0; i < recs.length; i++) {
+      var r = recs[i], d = new Date(r.t);
+      rows.push([
+        d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate()),
+        pad(d.getHours()) + ':' + pad(d.getMinutes()),
+        r.name || '',
+        r.count,
+        r.unit.toFixed(3),
+        r.mult,
+        r.tareName || '',
+        r.tareG == null ? '' : r.tareG,
+        r.boxes,
+        recBx(r).replace(/　/g, ' ')
+      ].join('\t'));
+    }
+    return rows.join('\n');
+  }
+
+  function showTSV(tsv) {
+    var box = $('tsvBox');
+    box.value = tsv;
+    box.hidden = false;
+    box.focus();
+    box.setSelectionRange(0, box.value.length);
+  }
+
+  $('copy').addEventListener('click', function () {
+    var btn = this;
+    if (!getRecords().length) return;
+    var tsv = recordsTSV();
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(tsv).then(
+          function () { flash(btn, 'コピーしました'); },
+          function () { showTSV(tsv); flash(btn, '下の枠から手動コピー'); }
+        );
+        return;
+      }
+    } catch (e) { /* 下へ */ }
+    showTSV(tsv);
+    flash(btn, '下の枠から手動コピー');
+  });
+
+  $('daySel').addEventListener('change', function () {
+    selDay = this.value;
+    $('tsvBox').hidden = true;
+    renderRecords();
+  });
+
+  $('wipe').addEventListener('click', function () {
+    var btn = this;
+    var back = selDay === 'all' ? '全消去' : 'この日を消去';
+    if (!visibleRecords().length) return;
+    if (btn.dataset.armed) {
+      delete btn.dataset.armed;
+      clearTimeout(Number(btn.dataset.timer));
+      btn.textContent = back;
+      if (selDay === 'all') {
+        putRecords([], allDays(getRecords()));
+      } else {
+        var dd = {}; dd[selDay] = 1;
+        putRecords(getRecords().filter(function (r) { return dayOf(r.t) !== selDay; }), dd);
+      }
+      recId = null; recFromList = false; setEditing(null);
+      renderRecords();
+      $('tsvBox').hidden = true;
+      return;
+    }
+    btn.dataset.armed = '1';
+    btn.textContent = 'もう1回押す';
+    btn.dataset.timer = String(setTimeout(function () {
+      delete btn.dataset.armed;
+      btn.textContent = back;
+    }, 4000));
+  });
+
+  /* ---------- スワイプ ---------- */
+
+  (function () {
+    var list = $('recList');
+
+    list.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('.rec-actions')) return;
+      var row = e.target.closest('.rec');
+      if (!row) return;
+      if (openRow && openRow !== row) closeRow();
+      skipClick = false;
+      drag = { row: row, x: e.clientX, y: e.clientY, base: row.classList.contains('is-open') ? -SWIPE_W : 0, axis: null, moved: 0 };
+    });
+
+    list.addEventListener('pointermove', function (e) {
+      if (!drag) return;
+      var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!drag.axis) {
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        drag.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+        if (drag.axis === 'x') drag.row.classList.add('is-dragging');
+      }
+      if (drag.axis !== 'x') return;
+      drag.moved = dx;
+      var t = Math.max(-SWIPE_W, Math.min(0, drag.base + dx));
+      drag.row.querySelector('.rec-body').style.transform = 'translateX(' + t + 'px)';
+    });
+
+    function finish() {
+      if (!drag) return;
+      var d = drag;
+      drag = null;
+      d.row.classList.remove('is-dragging');
+      if (d.axis !== 'x') return;
+      skipClick = true;
+      if (d.base + d.moved < -SWIPE_W / 2) openRowAt(d.row);
+      else { openRow = d.row; closeRow(); }
+    }
+
+    list.addEventListener('pointerup', finish);
+    list.addEventListener('pointercancel', finish);
+
+    list.addEventListener('click', function (e) {
+      var act = e.target.closest('.rec-btn');
+      if (act) {
+        var t = Number(act.getAttribute('data-t'));
+        if (act.getAttribute('data-act') === 'edit') startEdit(t);
+        else {
+          var dd = {}; dd[dayOf(t)] = 1;
+          putRecords(getRecords().filter(function (r) { return r.t !== t; }), dd);
+          if (recId === t) { recId = null; recFromList = false; setEditing(null); }
+          renderRecords();
+        }
+        return;
+      }
+      if (skipClick) return;
+      var row = e.target.closest('.rec');
+      if (!row) return;
+      if (row.classList.contains('is-open')) { openRow = row; closeRow(); }
+      else openRowAt(row);
+    });
+  })();
+
+  document.addEventListener('click', function (e) {
+    if (openRow && !e.target.closest('.rec')) closeRow();
+  });
+
+  /* ---------- 端末の好み ---------- */
+
+  function savePrefs() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify({
+        sampleUnit: prefSampleUnit,
+        boxUnit: prefBoxUnit,
+        boxCount: $('boxes').querySelectorAll('.box').length
+      }));
+    } catch (e) { /* 無視 */ }
+  }
+
+  function loadPrefs() {
+    var d = null;
+    try {
+      var s = localStorage.getItem(KEY);
+      if (s) d = JSON.parse(s);
+    } catch (e) { d = null; }
+    if (!d || typeof d !== 'object') d = {};
+    prefSampleUnit = d.sampleUnit === 'kg' ? 'kg' : 'g';
+    prefBoxUnit = 'kg';   /* 検品は kg のはかりが多いので、保存値に関係なく kg から始める */
+    setUnitBtn($('sampleUnit'), prefSampleUnit);
+    setBoxes(3);
+  }
+
+  /* ---------- 訂正 ---------- */
+
+  function setEditing(name) {
+    $('editBar').hidden = !recFromList;
+    if (recFromList) $('editLabel').textContent = '訂正中：' + (name || '（製品名なし）');
+    if (!$('next').dataset.busy) $('next').textContent = recFromList ? '上書きして次へ' : '次へ';
+  }
+
+  function currentInputs() {
+    var bs = $('boxes').querySelectorAll('.box');
+    var arr = [];
+    for (var i = 0; i < bs.length; i++) {
+      arr.push({
+        tare: bs[i].querySelector('.box-tare').value,
+        other: bs[i].querySelector('.box-other-input').value,
+        otherUnit: unitOf(bs[i].querySelector('.box-other-input')),
+        w: bs[i].querySelector('.box-input').value,
+        wUnit: unitOf(bs[i].querySelector('.box-input'))
+      });
+    }
+    return {
+      mode: mode,
+      sampleUnit: unitOf($('sampleW')),
+      sampleN: $('sampleN').value,
+      sampleW: $('sampleW').value,
+      unitDirect: $('unitDirect').value,
+      mult: $('multSel').value,
+      boxes: arr
+    };
+  }
+
+  function has(sel, v) { return !!sel.querySelector('option[value="' + v + '"]'); }
+
+  function applyInputs(inp) {
+    /* 旧形式は inp.scale が全欄共通だった */
+    var legacyU = inp.scale === 'kg' ? 'kg' : null;
+    setUnitBtn($('sampleUnit'), legacyU || inp.sampleUnit || 'g');
+
+    var arr = inp.boxes && inp.boxes.length ? inp.boxes : [{}];
+    setBoxes(arr.length);
+    var bs = $('boxes').querySelectorAll('.box');
+    for (var i = 0; i < bs.length; i++) {
+      var b = arr[i] || {};
+      /* 旧形式（箱ごとの梱包がない記録）にも対応 */
+      var tv = typeof b === 'string' ? (inp.tare || '') : (b.tare || inp.tare || '');
+      var ow = typeof b === 'string' ? (inp.tareOther || '') : (b.other || inp.tareOther || '');
+      var wv = typeof b === 'string' ? b : (b.w || '');
+      var sel = bs[i].querySelector('.box-tare');
+      sel.value = has(sel, tv) ? tv : '';
+      var oi = bs[i].querySelector('.box-other-input');
+      var wi = bs[i].querySelector('.box-input');
+      oi.value = ow;
+      wi.value = wv;
+      setUnitBtn(unitBtnOf(oi), legacyU || b.otherUnit || 'g');
+      setUnitBtn(unitBtnOf(wi), legacyU || b.wUnit || 'g');
+      syncBox(bs[i]);
+    }
+
+    if (has($('sampleN'), inp.sampleN)) $('sampleN').value = inp.sampleN;
+    if (has($('multSel'), inp.mult)) $('multSel').value = inp.mult;
+    $('sampleW').value = inp.sampleW == null ? '' : String(inp.sampleW);
+    $('unitDirect').value = inp.unitDirect == null ? '' : String(inp.unitDirect);
+    setMode(inp.mode === 'direct' ? 'direct' : 'measure');
+  }
+
+  function legacyInputs(r) {
+    var tv = 'other';
+    for (var i = 0; i < TARES.length; i++) if (TARES[i].g === r.tare) { tv = TARES[i].v; break; }
+    var arr = [];
+    for (var j = 0; j < Math.max(1, r.boxes || 1); j++) {
+      arr.push({ tare: tv, other: tv === 'other' ? String(r.tare) : '', otherUnit: 'g', w: '', wUnit: 'g' });
+    }
+    return {
+      mode: 'direct', sampleUnit: 'g', sampleN: '10', sampleW: '',
+      unitDirect: r.unit.toFixed(3), mult: String(r.mult || 1), boxes: arr
+    };
+  }
+
+  function startEdit(t) {
+    var recs = getRecords(), r = null;
+    for (var i = 0; i < recs.length; i++) if (recs[i].t === t) { r = recs[i]; break; }
+    if (!r) return;
+    applyInputs(r.inputs || legacyInputs(r));
+    $('prodName').value = r.name || '';
+    recId = r.t;
+    recFromList = true;
+    setEditing(r.name);
+    setTab('calc');
+    calc();
+    showPrev();
+  }
+
+  /* ---------- 計算 ---------- */
+
+  function unitWeight() {
+    if (mode === 'direct') return num($('unitDirect').value);
+    var w = gramsOf($('sampleW'));
+    if (!isFinite(w) || w <= 0) return NaN;
+    return w / sampleN();
+  }
+
+  function calc() {
+    var u = unitWeight();
+    var m = mult();
+
+    $('unitOut').innerHTML = isFinite(u) ? fmt(u, 3) + '<small>g</small>' : '—';
+    $('unitEcho').textContent = isFinite(u) ? fmt(u, 3) + 'g' : '—';
+    $('multEcho').textContent = '×' + m;
+
+    var chip = $('chip');
+    var note = $('note');
+    var boxes = $('boxes').querySelectorAll('.box');
+
+    function setNote(msg, alert) {
+      note.textContent = msg || '';
+      note.hidden = !msg;
+      note.className = alert ? 'readout-note is-alert' : 'readout-note';
+    }
+
+    function idle(msg, alert, keepBoxes) {
+      if (!keepBoxes) {
+        for (var i = 0; i < boxes.length; i++) {
+          boxes[i].classList.remove('is-warn');
+          boxes[i].querySelector('.box-count').textContent = '—';
+          boxes[i].querySelector('.box-detail').textContent = '';
+        }
+      }
+      $('countValue').textContent = '—';
+      $('boxCount').textContent = '—';
+      $('rawValue').textContent = '—';
+      $('totalOut').textContent = '—';
+      $('bxOut').textContent = '';
+      chip.hidden = !alert;
+      chip.textContent = alert ? '入力エラー' : '';
+      chip.className = 'chip is-warn';
+      setNote(msg, alert);
+      result = null;
+      $('next').disabled = true;
+      summary(NaN, 0);
+    }
+
+    if (!isFinite(u) || u <= 0) { idle('単重量を入力', false); return; }
+
+    var sumRounded = 0, sumRaw = 0, filled = 0, warned = [], heavy = [], bad = false;
+    var noTare = false, tNames = {}, tGs = {}, lastName = '', lastG = null, bx = [];
+
+    for (var i = 0; i < boxes.length; i++) {
+      var box = boxes[i];
+      var cEl = box.querySelector('.box-count');
+      var dEl = box.querySelector('.box-detail');
+      var total = gramsOf(box.querySelector('.box-input'));
+      var tare = tareG(box);
+
+      box.classList.remove('is-warn');
+
+      if (!isFinite(total)) { cEl.textContent = '—'; dEl.textContent = ''; continue; }
+
+      if (!isFinite(tare)) {
+        cEl.textContent = '—';
+        dEl.textContent = '梱包を選択';
+        box.classList.add('is-warn');
+        noTare = true;
+        continue;
+      }
+
+      var net = total - tare;
+      if (net <= 0) {
+        cEl.textContent = '—';
+        dEl.textContent = '梱包以下';
+        box.classList.add('is-warn');
+        bad = true;
+        continue;
+      }
+
+      var raw = (net / u) * m;
+      var rounded = Math.round(raw / 10) * 10;
+      var diffPieces = raw - rounded;
+
+      filled++;
+      sumRaw += raw;
+      sumRounded += rounded;
+      lastName = tareName(box);
+      lastG = tare;
+      tNames[lastName] = 1;
+      tGs[tare] = 1;
+
+      cEl.innerHTML = rounded.toLocaleString('ja-JP') + '<small>個</small>';
+      dEl.textContent = '';
+      bxAdd(bx, tareGrpOf(box.querySelector('.box-tare').value));
+
+      if (total > MAX_BOX_G) { box.classList.add('is-warn'); heavy.push(i + 1); }
+      else if (Math.abs(diffPieces) > TOL * m) { box.classList.add('is-warn'); warned.push(i + 1); }
+    }
+
+    if (!filled) {
+      idle(noTare ? '梱包を選択' : (bad ? '総重量が梱包以下' : '総重量を入力'), bad || noTare, true);
+      return;
+    }
+
+    $('countValue').textContent = sumRounded.toLocaleString('ja-JP');
+    $('boxCount').textContent = bxText(bx);
+    $('bxOut').textContent = bxText(bx);
+    $('rawValue').textContent = fmt(sumRaw, 1) + '個';
+    $('totalOut').innerHTML = sumRounded.toLocaleString('ja-JP') + '<small>個</small>';
+
+    var names = Object.keys(tNames);
+    var gs = Object.keys(tGs);
+    result = {
+      count: sumRounded,
+      unit: u,
+      mult: m,
+      tareName: names.length === 1 ? lastName : '混在',
+      tareG: gs.length === 1 ? lastG : null,
+      boxes: filled,
+      bx: bx
+    };
+    $('next').disabled = false;
+    summary(u, filled, bxText(bx));
+
+    chip.hidden = false;
+    if (heavy.length) {
+      chip.textContent = '要確認';
+      chip.className = 'chip is-warn';
+      setNote('箱' + heavy.join('・箱') + ' の重量が大きすぎます。はかりの単位を確認してください', true);
+    } else if (bad || noTare) {
+      chip.textContent = '入力エラー';
+      chip.className = 'chip is-warn';
+      setNote(noTare ? '梱包が未選択の箱があります' : '総重量が梱包以下の箱があります', true);
+    } else if (warned.length) {
+      chip.textContent = '要確認';
+      chip.className = 'chip is-warn';
+      setNote('箱' + warned.join('・箱') + ' が10個刻みから外れています', true);
+    } else {
+      chip.textContent = 'OK';
+      chip.className = 'chip';
+      setNote('', false);
+    }
+  }
+
+  /* 製品名に一致する前回の単重量を出す。無ければ何も出さない */
+  function lookupPrev() {
+    var key = normName($('prodName').value);
+    if (!key) return null;
+    var hit = units[key];
+    if (hit && isFinite(hit.u) && hit.u > 0) return hit;
+    /* 索引がまだ無いとき（db 未接続など）は記録から直接探す */
+    for (var i = 0; i < records.length; i++) {
+      if (normName(records[i].name) === key && records[i].unit > 0) {
+        return { n: records[i].name, u: records[i].unit, t: records[i].t, m: records[i].mult };
+      }
+    }
+    return null;
+  }
+
+  function showPrev() {
+    var hit = lookupPrev();
+    $('prevBar').hidden = !hit;
+    if (!hit) return;
+    var pm = hit.m >= 1 ? hit.m : 1;
+    $('prevVal').textContent = fmt(hit.u, 3) + 'g';
+    $('prevMult').textContent = '×' + pm;
+    $('prevWhen').textContent = hit.t ? '（' + stamp(new Date(hit.t)) + '）' : '';
+    /* 今の取数と違うときは枠を太くして目に入れる */
+    $('prevBar').classList.toggle('is-diff', pm !== mult());
+  }
+
+  $('prevUse').addEventListener('click', function () {
+    var hit = lookupPrev();
+    if (!hit) return;
+    $('unitDirect').value = hit.u.toFixed(3);
+    if (hit.m >= 1 && has($('multSel'), String(hit.m))) $('multSel').value = String(hit.m);
+    setMode('direct');
+    calc();
+    showPrev();
+  });
+
+  function summary(u, boxes, bxt) {
+    var nm = prodNameValue();
+    $('sumName').textContent = nm || '—';
+    $('sumName').className = 'v name' + (nm ? '' : ' none');
+    $('sumUnit').textContent = isFinite(u) ? fmt(u, 3) + ' g' : '—';
+    $('sumUnit').className = 'v' + (isFinite(u) ? '' : ' none');
+    $('sumBoxes').textContent = boxes ? (bxt || boxes + ' 箱') : '—';
+    $('sumBoxes').className = 'v' + (boxes ? '' : ' none');
+  }
+
+  /* ---------- 記録の確定 ---------- */
+
+  function buildRecord(t) {
+    return {
+      t: t,
+      name: prodNameValue(),
+      count: result.count,
+      unit: result.unit,
+      mult: result.mult,
+      tareName: result.tareName,
+      tareG: result.tareG,
+      boxes: result.boxes,
+      bx: result.bx,
+      inputs: currentInputs()
+    };
+  }
+
+  /* finalize=true で入力をリセット。false は画面を残したまま記録だけ更新 */
+  function commit(finalize) {
+    if (!result) return { ok: false, id: null, updated: false };
+    var recs = getRecords();
+    var id = recId, updated = false;
+
+    if (id) {
+      for (var i = 0; i < recs.length; i++) {
+        if (recs[i].t === id) {
+          var rec = buildRecord(id);
+          if (recFromList) rec.e = Date.now();
+          recs[i] = rec;
+          updated = true;
+          break;
+        }
+      }
+    }
+    if (!updated) {
+      id = Date.now();
+      recs.unshift(buildRecord(id));
+      if (recs.length > MAX_RECORDS) recs = recs.slice(0, MAX_RECORDS);
+    }
+
+    var days = {};
+    days[dayOf(id)] = 1;
+    var ok = putRecords(recs, days);
+    selDay = dayOf(id);   /* 記録した日を一覧に出す */
+
+    /* 製品名があれば、次回呼び出せるように単重量を控える */
+    var nm = prodNameValue();
+    if (nm && result.unit > 0) {
+      units[normName(nm)] = { n: nm, u: result.unit, m: result.mult, t: id };
+      dbSaveUnit(nm, result.unit, result.mult, id);
+    }
+
+    if (finalize) reset();
+    else { recId = id; }
+    return { ok: ok, id: id, updated: updated };
+  }
+
+  function reset() {
+    recId = null;
+    recFromList = false;
+    setEditing(null);
+    $('prodName').value = '';
+    $('sampleW').value = '';
+    $('unitDirect').value = '';
+    $('sampleN').value = '10';
+    $('multSel').value = '1';
+    prefBoxUnit = 'kg';   /* 次の製品は必ず kg から */
+    setBoxes(3);
+    setMode('measure');
+    calc();
+    showPrev();
+    savePrefs();
+    window.scrollTo(0, 0);
+  }
+
+  $('next').addEventListener('click', function () {
+    if (!result) return;
+    var wasEdit = recFromList;
+    var r = commit(true);
+    renderRecords();
+    flash(this, r.ok ? (wasEdit ? '訂正しました' : '記録しました') : '保存できません', '次へ');
+  });
+
+  $('cancel').addEventListener('click', function () {
+    /* 自動で作られた記録は取消で消す。一覧から編集したものは残す */
+    if (recId && !recFromList) {
+      var dc = {}; dc[dayOf(recId)] = 1;
+      putRecords(getRecords().filter(function (r) { return r.t !== recId; }), dc);
+    }
+    reset();
+    renderRecords();
+  });
+
+  /* ---------- 配線 ---------- */
+
+  ['sampleW', 'unitDirect'].forEach(function (f) {
+    $(f).addEventListener('input', function () { calc(); });
+  });
+  $('prodName').addEventListener('input', function () {
+    summary(unitWeight(), result ? result.boxes : 0, result ? bxText(result.bx) : '');
+    showPrev();
+  });
+
+  ['sampleN', 'multSel'].forEach(function (f) {
+    $(f).addEventListener('change', function () { calc(); showPrev(); });
+  });
+
+  /* 単位ボタンはその欄だけを切り替える */
+  document.addEventListener('click', function (e) {
+    var btn = e.target.closest('.sc-unit');
+    if (!btn) return;
+    var u = btn.dataset.u === 'kg' ? 'g' : 'kg';
+    setUnitBtn(btn, u);
+    if (btn.id === 'sampleUnit') prefSampleUnit = u;
+    else if (btn.classList.contains('box-unit')) {
+      /* 単位を変えたら、その箱より下の箱も同じ単位にする */
+      prefBoxUnit = u;
+      var bs = $('boxes').querySelectorAll('.box'), hit = false;
+      for (var i = 0; i < bs.length; i++) {
+        if (hit) setUnitBtn(bs[i].querySelector('.box-unit'), u);
+        if (bs[i] === btn.closest('.box')) hit = true;
+      }
+    }
+    else if (btn.closest('.box-other')) spreadOther(btn.closest('.box'));
+    calc();
+    savePrefs();
+  });
+
+  $('modeMeasure').addEventListener('click', function () { setMode('measure'); calc(); });
+  $('modeDirect').addEventListener('click', function () { setMode('direct'); calc(); });
+
+  $('addBox').addEventListener('click', function () { addBox(true); calc(); savePrefs(); });
+
+  $('boxes').addEventListener('input', function (e) {
+    if (e.target.classList.contains('box-other-input')) spreadOther(e.target.closest('.box'));
+    if (e.target.classList.contains('box-input') || e.target.classList.contains('box-other-input')) calc();
+  });
+
+  $('boxes').addEventListener('change', function (e) {
+    if (!e.target.classList.contains('box-tare')) return;
+    var box = e.target.closest('.box');
+    syncBox(box);
+    spreadTare(box);
+    if (e.target.value === 'other') box.querySelector('.box-other-input').focus();
+    calc();
+  });
+
+  $('boxes').addEventListener('click', function (e) {
+    var del = e.target.closest('.box-del');
+    if (!del) return;
+    if ($('boxes').querySelectorAll('.box').length <= 1) return;
+    del.closest('.box').remove();
+    renumber();
+    calc();
+    savePrefs();
+  });
+
+  /* ---------- 書き出し・読み込み ---------- */
+
+  var BKEY = 'keisu2-last-backup';
+
+  function bkNote(msg) {
+    if (msg) { $('bkNote').textContent = msg; return; }
+    var t = 0;
+    try { t = Number(localStorage.getItem(BKEY)) || 0; } catch (e) { /* 無視 */ }
+    $('bkNote').textContent = t ? '最後に書き出した日：' + stamp(new Date(t)) : 'まだ書き出していません';
+  }
+
+  function saveFile(name, text) {
+    var blob = new Blob([text], { type: 'application/json' });
+    var file = null;
+    try { file = new File([blob], name, { type: 'application/json' }); } catch (e) { file = null; }
+    var touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    if (touch && file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      return navigator.share({ files: [file] });
+    }
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return Promise.resolve();
+  }
+
+  $('bkOut').addEventListener('click', function () {
+    if (!dbc) { bkNote('保存場所が使えないため書き出せません'); return; }
+    dbc.dump().then(function (bk) {
+      var n = 0;
+      bk.days.forEach(function (d) { n += d.rows.length; });
+      return saveFile('keisu-backup-' + dayKey(new Date()) + '.json', JSON.stringify(bk)).then(function () {
+        try { localStorage.setItem(BKEY, String(Date.now())); } catch (e) { /* 無視 */ }
+        bkNote(n + '件を書き出しました');
+      });
+    }).catch(function (e) {
+      if (e && e.name === 'AbortError') { bkNote(); return; }
+      bkNote('書き出せませんでした');
+    });
+  });
+
+  $('bkIn').addEventListener('click', function () { $('bkFile').value = ''; $('bkFile').click(); });
+
+  $('bkFile').addEventListener('change', function () {
+    var f = this.files && this.files[0];
+    if (!f) return;
+    if (!dbc) { bkNote('保存場所が使えないため読み込めません'); return; }
+    var rd = new FileReader();
+    rd.onload = function () {
+      var bk = null;
+      try { bk = JSON.parse(rd.result); } catch (e) { bk = null; }
+      if (!bk || bk.app !== 'keisu' || !Array.isArray(bk.days)) { bkNote('このファイルは読み込めません'); return; }
+      dbc.merge(bk).then(function (added) {
+        return reloadFromDb().then(function () { bkNote(added + '件を読み込みました'); });
+      }).catch(function () { bkNote('読み込めませんでした'); });
+    };
+    rd.onerror = function () { bkNote('読み込めませんでした'); };
+    rd.readAsText(f);
+  });
+
+  /* 起動時に保存できるかを確認 */
+  (function () {
+    try {
+      localStorage.setItem('__keisu_probe', '1');
+      localStorage.removeItem('__keisu_probe');
+    } catch (e) { $('storeWarn').hidden = false; }
+  })();
+
+  records = localLoad();
+  loadPrefs();
+  setMode('measure');
+  calc();
+  renderRecords();
+  showPrev();
+  initDb();
+  bkNote();
+
+  /* 消されにくい保存にしてもらう／電波なしでも開けるようにする */
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) { /* 無視 */ }
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    navigator.serviceWorker.register('sw.js').catch(function () { /* 無くても動く */ });
+  }
+</script>
+
+</body>
+</html>
